@@ -1,83 +1,89 @@
 package com.example.biblioteca.security;
 
-import com.example.biblioteca.dto.LoginRequest;
-import com.example.biblioteca.dto.LoginResponse;
-import com.example.biblioteca.dto.RegistroUsuarioRequest;
+import com.example.biblioteca.dto.*;
 import com.example.biblioteca.model.Rol;
 import com.example.biblioteca.model.Usuario;
 import com.example.biblioteca.repository.RolRepository;
 import com.example.biblioteca.repository.UsuarioRepository;
-import com.example.biblioteca.config.JwtUtils;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
 
-    private final UsuarioRepository usuarioRepository;
-    private final RolRepository rolRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
-    public AuthService(
-            UsuarioRepository usuarioRepository,
-            RolRepository rolRepository,
-            PasswordEncoder passwordEncoder,
-            JwtUtils jwtUtils
-    ) {
-        this.usuarioRepository = usuarioRepository;
-        this.rolRepository = rolRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtUtils = jwtUtils;
-    }
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
-    // =========================================================
-    //                    REGISTRO DE USUARIO
-    // =========================================================
-    public Usuario registrarUsuario(RegistroUsuarioRequest request) {
+    @Autowired
+    private RolRepository rolRepository;
 
-        // Validar email duplicado
-        if (usuarioRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("El email ya está registrado.");
-        }
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
-        // Obtener rol
-        Rol rol = rolRepository.findByNombre(request.getRol())
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado."));
+    @Autowired
+    private JwtUtils jwtUtils;
 
-        // Crear usuario
-        Usuario usuario = new Usuario();
-        usuario.setNombre(request.getNombre());
-        usuario.setEmail(request.getEmail());
-        usuario.setPassword(passwordEncoder.encode(request.getPassword()));
-        usuario.setRol(rol);
-
-        return usuarioRepository.save(usuario);
-    }
-
-    // =========================================================
-    //                            LOGIN
-    // =========================================================
+    // =============================
+    // LOGIN
+    // =============================
     public LoginResponse login(LoginRequest request) {
 
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Credenciales inválidas."));
+        // Autentica credenciales
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
 
-        // Verificar contraseña
-        if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
-            throw new RuntimeException("Credenciales inválidas.");
+        // Usuario desde BD
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail());
+
+        // Crear token JWT
+        String token = jwtUtils.generateToken(usuario.getEmail(), usuario.getRol().getNombre());
+
+        // Construir response
+        return new LoginResponse(token, usuario.getEmail(), usuario.getRol().getNombre());
+    }
+
+    // =============================
+    // REGISTRO DE USUARIOS
+    // =============================
+    public UsuarioResponse registrar(RegistroUsuarioRequest request) {
+
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("El email ya está registrado");
         }
 
-        // Generar JWT
-        String token = jwtUtils.generarToken(usuario.getEmail(), usuario.getRol().getNombre());
+        // Buscar rol
+        Rol rol = rolRepository.findByNombre(request.getRol());
+        if (rol == null) {
+            throw new RuntimeException("Rol no válido: " + request.getRol());
+        }
 
-        // Crear respuesta
-        return new LoginResponse(
-                token,
-                usuario.getEmail(),
-                usuario.getRol().getNombre()
+        // Crear usuario
+        Usuario nuevo = new Usuario();
+        nuevo.setNombre(request.getNombre());
+        nuevo.setEmail(request.getEmail());
+        nuevo.setPassword(passwordEncoder.encode(request.getPassword()));
+        nuevo.setRol(rol);
+
+        usuarioRepository.save(nuevo);
+
+        // Construir respuesta sin exponer la clave
+        return new UsuarioResponse(
+                nuevo.getId(),
+                nuevo.getNombre(),
+                nuevo.getEmail(),
+                nuevo.getRol().getNombre(),
+                nuevo.isActivo()
         );
     }
 }
-
