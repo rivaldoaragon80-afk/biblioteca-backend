@@ -1,4 +1,4 @@
-package com.example.support.config;
+/*package com.example.support.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,5 +29,4 @@ public class CorsConfig {
 
         return new CorsFilter(source);
     }
-}
-
+}*/

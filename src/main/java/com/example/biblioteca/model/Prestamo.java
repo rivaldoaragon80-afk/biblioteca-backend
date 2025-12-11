@@ -1,48 +1,56 @@
 package com.example.biblioteca.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "prestamos")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Prestamo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "usuario_id")
+    @NotNull(message = "El usuario es obligatorio")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @ManyToOne
-    @JoinColumn(name = "libro_id")
+    @NotNull(message = "El libro es obligatorio")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "libro_id", nullable = false)
     private Libro libro;
 
+    @NotNull(message = "La fecha de préstamo es obligatoria")
+    @Column(name = "fecha_prestamo", nullable = false)
     private LocalDate fechaPrestamo;
+
+    @Column(name = "fecha_devolucion")
     private LocalDate fechaDevolucion;
 
+    @NotNull(message = "El estado es obligatorio")
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private EstadoPrestamo estado;
 
-    public Prestamo() {}
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    // GETTERS Y SETTERS
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
-
-    public Libro getLibro() { return libro; }
-    public void setLibro(Libro libro) { this.libro = libro; }
-
-    public LocalDate getFechaPrestamo() { return fechaPrestamo; }
-    public void setFechaPrestamo(LocalDate fechaPrestamo) { this.fechaPrestamo = fechaPrestamo; }
-
-    public LocalDate getFechaDevolucion() { return fechaDevolucion; }
-    public void setFechaDevolucion(LocalDate fechaDevolucion) { this.fechaDevolucion = fechaDevolucion; }
-
-    public EstadoPrestamo getEstado() { return estado; }
-    public void setEstado(EstadoPrestamo estado) { this.estado = estado; }
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }

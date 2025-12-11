@@ -1,82 +1,85 @@
 package com.example.biblioteca.controller;
 
-import com.example.biblioteca.dto.ErrorResponse;
 import com.example.biblioteca.dto.LibroRequest;
 import com.example.biblioteca.dto.LibroResponse;
+import com.example.biblioteca.model.Libro;
 import com.example.biblioteca.service.LibroService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/libros")
+@RequestMapping("/api/libros")
+@CrossOrigin("*")
+@RequiredArgsConstructor
 public class LibroController {
 
     private final LibroService libroService;
 
-    public LibroController(LibroService libroService) {
-        this.libroService = libroService;
-    }
-
-    // Crear libro
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<?> crearLibro(@RequestBody LibroRequest request) {
-        try {
-            LibroResponse response = libroService.crearLibro(request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al crear libro: " + e.getMessage())
-            );
-        }
+    public ResponseEntity<LibroResponse> crear(@Valid @RequestBody LibroRequest request) {
+        Libro libro = mapToEntity(request);
+        Libro libroCreado = libroService.registrar(libro);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapToResponse(libroCreado));
     }
 
-    // Listar todos los libros
-    @GetMapping
-    public ResponseEntity<List<LibroResponse>> listarLibros() {
-        return ResponseEntity.ok(libroService.listarLibros());
-    }
-
-    // Obtener libro por ID
-    @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerLibro(@PathVariable Long id) {
-        try {
-            LibroResponse response = libroService.obtenerLibro(id);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Libro no encontrado")
-            );
-        }
-    }
-
-    // Actualizar libro
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarLibro(
-            @PathVariable Long id,
-            @RequestBody LibroRequest request
-    ) {
-        try {
-            LibroResponse response = libroService.actualizarLibro(id, request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al actualizar libro: " + e.getMessage())
-            );
-        }
+    public ResponseEntity<LibroResponse> actualizar(@PathVariable Long id, @Valid @RequestBody LibroRequest request) {
+        Libro libro = mapToEntity(request);
+        Libro libroActualizado = libroService.actualizar(id, libro);
+        return ResponseEntity.ok(mapToResponse(libroActualizado));
     }
 
-    // Eliminar libro
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarLibro(@PathVariable Long id) {
-        try {
-            libroService.eliminarLibro(id);
-            return ResponseEntity.ok().body("Libro eliminado correctamente");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al eliminar libro")
-            );
-        }
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        libroService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','USUARIO')")
+    @GetMapping
+    public ResponseEntity<List<LibroResponse>> listar() {
+        List<LibroResponse> libros = libroService.listar()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(libros);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','USUARIO')")
+    @GetMapping("/{id}")
+    public ResponseEntity<LibroResponse> obtener(@PathVariable Long id) {
+        Libro libro = libroService.obtenerPorId(id);
+        return ResponseEntity.ok(mapToResponse(libro));
+    }
+
+    private Libro mapToEntity(LibroRequest request) {
+        return Libro.builder()
+                .titulo(request.getTitulo())
+                .autor(request.getAutor())
+                .anio(request.getAnio())
+                .stock(request.getStock())
+                .isbn(request.getIsbn())
+                .descripcion(request.getDescripcion())
+                .build();
+    }
+
+    private LibroResponse mapToResponse(Libro libro) {
+        LibroResponse response = new LibroResponse();
+        response.setId(libro.getId());
+        response.setTitulo(libro.getTitulo());
+        response.setAutor(libro.getAutor());
+        response.setAnio(libro.getAnio());
+        response.setStock(libro.getStock());
+        return response;
     }
 }

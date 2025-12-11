@@ -2,15 +2,10 @@ package com.example.biblioteca.security;
 
 import com.example.biblioteca.model.Usuario;
 import com.example.biblioteca.repository.UsuarioRepository;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -27,12 +22,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
 
-        return new org.springframework.security.core.userdetails.User(
-                usuario.getEmail(),
-                usuario.getPassword(),
-                Collections.singleton(
-                        new SimpleGrantedAuthority("ROLE_" + usuario.getRol().getNombre())
-                )
-        );
+        return usuario;
     }
 }

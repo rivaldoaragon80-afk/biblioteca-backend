@@ -1,16 +1,19 @@
 package com.example.biblioteca.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ErrorResponse {
-
+    private LocalDateTime timestamp;
+    private int status;
+    private String error;
     private String mensaje;
-
-    public ErrorResponse() {}
-
-    public ErrorResponse(String mensaje) {
-        this.mensaje = mensaje;
-    }
-
-    public String getMensaje() { return mensaje; }
-    public void setMensaje(String mensaje) { this.mensaje = mensaje; }
+    private String path;
 }
 

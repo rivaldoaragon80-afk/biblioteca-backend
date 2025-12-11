@@ -1,16 +1,18 @@
 package com.example.biblioteca.controller;
 
-import com.example.biblioteca.dto.ErrorResponse;
 import com.example.biblioteca.dto.PrestamoRequest;
 import com.example.biblioteca.dto.PrestamoResponse;
+import com.example.biblioteca.model.Prestamo;
 import com.example.biblioteca.service.PrestamoService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/prestamos")
+@CrossOrigin("*")
 public class PrestamoController {
 
     private final PrestamoService prestamoService;
@@ -19,65 +21,52 @@ public class PrestamoController {
         this.prestamoService = prestamoService;
     }
 
-    // Crear préstamo
-    @PostMapping
-    public ResponseEntity<?> crearPrestamo(@RequestBody PrestamoRequest request) {
-        try {
-            PrestamoResponse response = prestamoService.crearPrestamo(request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al crear préstamo: " + e.getMessage())
-            );
-        }
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/crear")
+    public ResponseEntity<PrestamoResponse> crearPrestamo(@RequestBody PrestamoRequest request) {
+        Prestamo p = prestamoService.crearPrestamo(request.getUsuarioId(), request.getLibroId());
+
+        PrestamoResponse response = new PrestamoResponse(
+                p.getId(),
+                p.getUsuario().getNombre(),
+                p.getLibro().getTitulo(),
+                p.getFechaPrestamo(),
+                p.getFechaDevolucion(),
+                p.getEstado().name()
+        );
+        return ResponseEntity.ok(response);
     }
 
-    // Listar todos
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/devolver/{id}")
+    public ResponseEntity<PrestamoResponse> devolver(@PathVariable Long id) {
+        Prestamo p = prestamoService.devolverPrestamo(id);
+        PrestamoResponse response = new PrestamoResponse(
+                p.getId(),
+                p.getUsuario().getNombre(),
+                p.getLibro().getTitulo(),
+                p.getFechaPrestamo(),
+                p.getFechaDevolucion(),
+                p.getEstado().name()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN','USUARIO')")
     @GetMapping
-    public ResponseEntity<List<PrestamoResponse>> listarPrestamos() {
+    public ResponseEntity<List<Prestamo>> listar() {
         return ResponseEntity.ok(prestamoService.listarPrestamos());
     }
 
-    // Obtener préstamo por ID
+    @PreAuthorize("hasAnyRole('ADMIN','USUARIO')")
     @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerPrestamo(@PathVariable Long id) {
-        try {
-            PrestamoResponse response = prestamoService.obtenerPrestamo(id);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Préstamo no encontrado")
-            );
-        }
+    public ResponseEntity<Prestamo> obtener(@PathVariable Long id) {
+        return ResponseEntity.ok(prestamoService.obtenerPrestamoPorId(id));
     }
 
-    // Actualizar préstamo
-    @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarPrestamo(
-            @PathVariable Long id,
-            @RequestBody PrestamoRequest request
-    ) {
-        try {
-            PrestamoResponse response = prestamoService.actualizarPrestamo(id, request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al actualizar préstamo: " + e.getMessage())
-            );
-        }
-    }
-
-    // Eliminar préstamo
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarPrestamo(@PathVariable Long id) {
-        try {
-            prestamoService.eliminarPrestamo(id);
-            return ResponseEntity.ok().body("Préstamo eliminado correctamente");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                new ErrorResponse("Error al eliminar préstamo")
-            );
-        }
+    @PreAuthorize("hasAnyRole('ADMIN','USUARIO')")
+    @GetMapping("/usuario/{idUsuario}")
+    public ResponseEntity<List<Prestamo>> prestamosPorUsuario(@PathVariable Long idUsuario) {
+        return ResponseEntity.ok(prestamoService.buscarPorUsuario(idUsuario));
     }
 }
-
